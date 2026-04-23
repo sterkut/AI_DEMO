@@ -102,7 +102,7 @@ with st.sidebar:
     - ✅ Щоденні звіти про втрачений прибуток
     
     **Зв'язатися з розробником:**
-    [Написати в Telegram](https://t.me/+380678569005)
+    [Написати в Telegram](https://t.me/sharkobogdan)
     """)
 
 df_filtered = df[
