@@ -336,14 +336,30 @@ with tab_call:
             result_desc = "Менеджер довів клієнта до цільової дії." if is_success else f"Причина втрати ліда: <b>{row.get('ROOT_PROBLEM', 'Невідомо')}</b>."
             status_icon = '✅' if is_success else '❌'
 
-            # --- БЕЗПЕЧНИЙ HTML-БЛОК 2 ---
+            # Витягуємо гроші, які ми вже порахували для цього рядка раніше
+            lost_total = row.get('Втрачено_грн', 0)
+            lost_main = row.get('Втрачено_Головна', 0)
+            lost_cross = row.get('Втрачено_Крос', 0)
+            
+            # Якщо є втрати, формуємо красиву плашку
+            loss_html = ""
+            if lost_total > 0:
+                loss_html = f"""
+                <div style='margin-top: 15px; padding: 12px; background: #FEF2F2; border: 1px dashed #FECACA; border-radius: 8px; color: #991B1B;'>
+                    <b style='font-size: 15px;'>💸 Втрачений прибуток з цього ліда: {lost_total:,.0f} ₴</b><br>
+                    <span style='font-size: 13px;'>З них на основному товарі: {lost_main:,.0f} ₴ | Недоотриманий крос-сел: {lost_cross:,.0f} ₴</span>
+                </div>
+                """
+
+            # --- БЕЗПЕЧНИЙ HTML-БЛОК 2 (з доданим loss_html) ---
             html_result = f"""
             <div style="background: {result_bg}; border: 1px solid {result_border}; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-                <div style="display: flex; gap: 15px; align-items: center;">
-                    <div style="font-size: 24px;">{status_icon}</div>
-                    <div>
+                <div style="display: flex; gap: 15px; align-items: flex-start;">
+                    <div style="font-size: 24px; margin-top: 2px;">{status_icon}</div>
+                    <div style="width: 100%;">
                         <h4 style="margin: 0 0 4px 0; color: #111827; font-size: 16px;">Результат розмови: {result_title}</h4>
                         <p style="margin: 0; color: #374151; font-size: 14px;">{result_desc} <br> Готовність: <b>{row.get('Готовність', 'N/A')}</b> | Зафіксовано крок: <b>{row.get('Зафіксував_Наступний_Крок', 'Ні')}</b> | Крос-сел: <b>{row.get('Спроба_Крос_Селу', 'Ні')}</b></p>
+                        {loss_html}
                     </div>
                 </div>
             </div>
