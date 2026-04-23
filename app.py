@@ -210,7 +210,7 @@ with tab_ceo:
         )
         cols_to_show = ['Менеджер', 'Дзвінок', 'Готовність', 'ROOT_PROBLEM', 'Втрачено_грн', 'Деталі_втрати']
         st.dataframe(all_lost_details[cols_to_show], use_container_width=True, hide_index=True)
-else:
+    else:
         st.success("Втрат не виявлено!")
 
     st.markdown("---")
