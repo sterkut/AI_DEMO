@@ -25,7 +25,7 @@ def load_data():
     try:
         from streamlit_gsheets import GSheetsConnection
         conn = st.connection("gsheets", type=GSheetsConnection)
-        url = "https://docs.google.com/spreadsheets/d/1a1JlK5D4MoRjiHBLOuUN9ScVkKzGPLE6zL1LvXj3Ezw/edit"
+        url = "https://docs.google.com/spreadsheets/d/1ngMU3jHZV_zFP6RSOeIjxMBs6xd0PTE7ijD09kgBeKw/edit?gid=0#gid=0"
         df = conn.read(spreadsheet=url)
     except Exception:
         pass
