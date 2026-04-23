@@ -292,8 +292,96 @@ with tab_call:
                 else: dislikes += 1
 
             deg = (score_12 / 12) * 360
+            
+            # --- БЕЗПЕЧНИЙ HTML-БЛОК 1 ---
+            html_skills = f"""
+            <div style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 40px; flex-wrap: wrap;">
+                <div style="text-align: center; min-width: 130px;">
+                    <div style="width: 120px; height: 120px; border-radius: 50%; background: conic-gradient({score_color} {deg}deg, #E2E8F0 0deg); display: flex; justify-content: center; align-items: center; margin: 0 auto 12px auto;">
+                        <div style="width: 95px; height: 95px; border-radius: 50%; background: white; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                            <span style="font-size: 32px; font-weight: 800; color: #0F172A; line-height: 1;">{score_12}</span>
+                            <span style="font-size: 13px; color: #64748B; font-weight: 600;">з 12</span>
+                        </div>
+                    </div>
+                    <span style="background: {score_color}15; color: {score_color}; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700;">{score_text}</span>
+                </div>
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 15px 0; color: #0F172A; font-size: 18px;">📊 Аналіз навичок продажу</h3>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <div style="flex: 1; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 10px; padding: 15px; text-align: center; min-width: 120px;">
+                            <div style="font-size: 24px; margin-bottom: 5px;">👍</div>
+                            <div style="font-size: 20px; font-weight: 800; color: #166534;">{likes}</div>
+                            <div style="font-size: 13px; color: #15803D; font-weight: 600;">Сильні сторони</div>
+                        </div>
+                        <div style="flex: 1; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 15px; text-align: center; min-width: 120px;">
+                            <div style="font-size: 24px; margin-bottom: 5px;">😐</div>
+                            <div style="font-size: 20px; font-weight: 800; color: #B45309;">{norms}</div>
+                            <div style="font-size: 13px; color: #B45309; font-weight: 600;">Зона уваги</div>
+                        </div>
+                        <div style="flex: 1; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 10px; padding: 15px; text-align: center; min-width: 120px;">
+                            <div style="font-size: 24px; margin-bottom: 5px;">🚩</div>
+                            <div style="font-size: 20px; font-weight: 800; color: #991B1B;">{dislikes}</div>
+                            <div style="font-size: 13px; color: #B91C1C; font-weight: 600;">Зони росту</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            """
+            st.markdown(html_skills, unsafe_allow_html=True)
 
-            st.markdown(f"""
-<div style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 40px; flex-wrap: wrap;">
-<div style="text-align: center; min-width: 130px;">
-<div style="
+            is_success = row.get("ROOT_PROBLEM", "Немає") == "Немає"
+            result_bg = "#F0FDF4" if is_success else "#FEF2F2"
+            result_border = "#BBF7D0" if is_success else "#FECACA"
+            result_title = "Угода успішна / Дотиснуто" if is_success else "Угоду втрачено"
+            result_desc = "Менеджер довів клієнта до цільової дії." if is_success else f"Причина втрати ліда: <b>{row.get('ROOT_PROBLEM', 'Невідомо')}</b>."
+            status_icon = '✅' if is_success else '❌'
+
+            # --- БЕЗПЕЧНИЙ HTML-БЛОК 2 ---
+            html_result = f"""
+            <div style="background: {result_bg}; border: 1px solid {result_border}; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <div style="font-size: 24px;">{status_icon}</div>
+                    <div>
+                        <h4 style="margin: 0 0 4px 0; color: #111827; font-size: 16px;">Результат розмови: {result_title}</h4>
+                        <p style="margin: 0; color: #374151; font-size: 14px;">{result_desc} <br> Готовність: <b>{row.get('Готовність', 'N/A')}</b> | Зафіксовано крок: <b>{row.get('Зафіксував_Наступний_Крок', 'Ні')}</b> | Крос-сел: <b>{row.get('Спроба_Крос_Селу', 'Ні')}</b></p>
+                    </div>
+                </div>
+            </div>
+            """
+            st.markdown(html_result, unsafe_allow_html=True)
+
+            tone_text = row.get("Тон_Розмови", "Тон розмови не проаналізовано.")
+            
+            # --- БЕЗПЕЧНИЙ HTML-БЛОК 3 ---
+            html_tone = f"""
+            <div style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+                    <div style="font-size: 20px;">🎙️</div>
+                    <h4 style="margin: 0; color: #0F172A; font-size: 16px;">Тон розмови</h4>
+                </div>
+                <p style="margin: 0; color: #475569; font-size: 14px; line-height: 1.5; padding-left: 30px;">{tone_text}</p>
+            </div>
+            """
+            st.markdown(html_tone, unsafe_allow_html=True)
+
+            # --- БЕЗПЕЧНИЙ HTML-БЛОК 4 ---
+            html_footer = f"""
+            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+                <div style="flex: 1; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; background: #F8FAFC;">
+                    <p style="margin: 0 0 4px 0; color: #64748B; font-size: 12px; text-transform: uppercase;">Менеджер</p>
+                    <h4 style="margin: 0; color: #0F172A; font-size: 16px;">👤 {row.get('Менеджер', 'N/A')}</h4>
+                </div>
+                <div style="flex: 2; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; background: #F8FAFC;">
+                    <p style="margin: 0 0 4px 0; color: #64748B; font-size: 12px; text-transform: uppercase;">Файл дзвінка (Ідентифікатор)</p>
+                    <h4 style="margin: 0; color: #0F172A; font-size: 14px; word-break: break-all;">📄 {row.get('Дзвінок', 'N/A')}</h4>
+                </div>
+            </div>
+
+            <div style="background: #FFFBEB; border: 1px solid #FEF3C7; border-radius: 12px; padding: 20px;">
+                <h4 style="margin: 0 0 8px 0; color: #92400E; font-size: 16px;">💡 Аналітика для бізнесу (Інсайт)</h4>
+                <p style="margin: 0; color: #92400E; line-height: 1.5;">{row.get('Інсайт_для_CEO', 'Немає інсайтів')}</p>
+            </div>
+            """
+            st.markdown(html_footer, unsafe_allow_html=True)
+    else:
+        st.info("Немає даних.")
