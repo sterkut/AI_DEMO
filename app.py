@@ -67,17 +67,24 @@ if df.empty:
     st.error("❌ Не вдалося знайти дані. Перевірте Google Sheets або наявність локального файлу.")
     st.stop()
 
-# --- 3. САЙДБАР: ФІЛЬТРИ ТА ГРОШІ ---
+# --- 3. САЙДБАР: КАСКАДНІ ФІЛЬТРИ ТА ГРОШІ ---
 with st.sidebar:
     st.markdown("### 🎛 Фільтри")
     
+    # КРОК 1: Менеджери
     managers_list = sorted(df["Менеджер"].dropna().unique()) if "Менеджер" in df.columns else []
     selected_managers = st.multiselect("👤 Менеджери", managers_list, default=managers_list)
     
-    intents_list = sorted(df["Готовність"].dropna().unique()) if "Готовність" in df.columns else []
+    df_step1 = df[df["Менеджер"].isin(selected_managers)] if selected_managers else df
+    
+    # КРОК 2: Готовність (залежить від обраних менеджерів)
+    intents_list = sorted(df_step1["Готовність"].dropna().unique()) if "Готовність" in df_step1.columns else []
     selected_intents = st.multiselect("🎯 Готовність до покупки", intents_list, default=intents_list)
 
-    root_list = sorted(df["ROOT_PROBLEM"].dropna().unique()) if "ROOT_PROBLEM" in df.columns else []
+    df_step2 = df_step1[df_step1["Готовність"].isin(selected_intents)] if selected_intents else df_step1
+
+    # КРОК 3: Причина (залежить від менеджерів і готовності)
+    root_list = sorted(df_step2["ROOT_PROBLEM"].dropna().unique()) if "ROOT_PROBLEM" in df_step2.columns else []
     selected_roots = st.multiselect("🚨 Причина втрати", root_list, default=root_list)
 
     st.markdown("<hr>", unsafe_allow_html=True)
@@ -102,9 +109,10 @@ with st.sidebar:
     - ✅ Щоденні звіти про втрачений прибуток
     
     **Зв'язатися з розробником:**
-    [Написати в Telegram](https://t.me/sharkobogdan)
+    [Написати в Telegram](https://t.me/Твій_Нікнейм)
     """)
 
+# Фінальний відфільтрований датафрейм для всіх вкладок
 df_filtered = df[
     (df["Менеджер"].isin(selected_managers)) & 
     (df["Готовність"].isin(selected_intents)) &
@@ -274,9 +282,19 @@ with tab_call:
     st.markdown("### 🔎 Детальний розбір розмови")
 
     if 'Дзвінок' in df_filtered.columns and not df_filtered.empty:
-        selected_file = st.selectbox("Оберіть файл дзвінка для розбору:", df_filtered['Дзвінок'].unique())
+        
+        # Створюємо зрозумілий список для вибору (Менеджер + Готовність + Причина + Файл)
+        display_names = df_filtered.apply(
+            lambda r: f"👤 {r.get('Менеджер','')} | 🎯 {r.get('Готовність','')} | 🚨 {r.get('ROOT_PROBLEM','')} | 📄 {r['Дзвінок']}",
+            axis=1
+        ).tolist()
+        
+        file_mapping = dict(zip(display_names, df_filtered['Дзвінок']))
+        
+        selected_display = st.selectbox("Оберіть файл дзвінка для розбору:", display_names)
 
-        if selected_file:
+        if selected_display:
+            selected_file = file_mapping[selected_display]
             row = df_filtered[df_filtered['Дзвінок'] == selected_file].iloc[0]
 
             score_12 = int(row.get('Hard_Бал', 0))
@@ -293,7 +311,6 @@ with tab_call:
 
             deg = (score_12 / 12) * 360
             
-            # --- БЕЗПЕЧНИЙ HTML-БЛОК 1 ---
             html_skills = f"""
             <div style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 40px; flex-wrap: wrap;">
                 <div style="text-align: center; min-width: 130px;">
@@ -336,12 +353,11 @@ with tab_call:
             result_desc = "Менеджер довів клієнта до цільової дії." if is_success else f"Причина втрати ліда: <b>{row.get('ROOT_PROBLEM', 'Невідомо')}</b>."
             status_icon = '✅' if is_success else '❌'
 
-            # Витягуємо гроші, які ми вже порахували для цього рядка раніше
+            # Витягуємо гроші
             lost_total = row.get('Втрачено_грн', 0)
             lost_main = row.get('Втрачено_Головна', 0)
             lost_cross = row.get('Втрачено_Крос', 0)
             
-            # Якщо є втрати, формуємо красиву плашку
             loss_html = ""
             if lost_total > 0:
                 loss_html = f"""
@@ -351,7 +367,6 @@ with tab_call:
                 </div>
                 """
 
-            # --- БЕЗПЕЧНИЙ HTML-БЛОК 2 (з доданим loss_html) ---
             html_result = f"""
             <div style="background: {result_bg}; border: 1px solid {result_border}; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
                 <div style="display: flex; gap: 15px; align-items: flex-start;">
@@ -368,7 +383,6 @@ with tab_call:
 
             tone_text = row.get("Тон_Розмови", "Тон розмови не проаналізовано.")
             
-            # --- БЕЗПЕЧНИЙ HTML-БЛОК 3 ---
             html_tone = f"""
             <div style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
                 <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
@@ -380,7 +394,6 @@ with tab_call:
             """
             st.markdown(html_tone, unsafe_allow_html=True)
 
-            # --- БЕЗПЕЧНИЙ HTML-БЛОК 4 ---
             html_footer = f"""
             <div style="display: flex; gap: 20px; margin-bottom: 20px;">
                 <div style="flex: 1; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; background: #F8FAFC;">
