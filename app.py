@@ -53,6 +53,12 @@ def load_data():
             if "Дотиснув" in col: rename_dict[col] = "Зафіксував_Наступний_Крок"
         df.rename(columns=rename_dict, inplace=True)
         
+        # ПРИМУСОВО РОБИМО ЦІ КОЛОНКИ ТЕКСТОМ (щоб цифри не ламали вкладки)
+        if "Менеджер" in df.columns:
+            df["Менеджер"] = df["Менеджер"].astype(str)
+        if "Дзвінок" in df.columns:
+            df["Дзвінок"] = df["Дзвінок"].astype(str)
+            
     return df
 
 df = load_data()
@@ -96,7 +102,7 @@ with st.sidebar:
     - ✅ Щоденні звіти про втрачений прибуток
     
     **Зв'язатися з розробником:**
-    [Написати в Telegram](https://t.me/ТВІЙ_НІК)
+    [Написати в Telegram](https://t.me/+380678569005)
     """)
 
 df_filtered = df[
@@ -203,4 +209,155 @@ with tab_ceo:
             lambda x: "Не запропоновано крос-сел" if (x['ROOT_PROBLEM'] == 'Немає' and x['Втрачено_Крос'] > 0) else x.get('Інсайт_для_CEO', ''), axis=1
         )
         cols_to_show = ['Менеджер', 'Дзвінок', 'Готовність', 'ROOT_PROBLEM', 'Втрачено_грн', 'Деталі_втрати']
-        st.dataframe
+        st.dataframe(all_lost_details[cols_to_show], use_container_width=True, hide_index=True)
+    else:
+        st.success("Втрат не виявлено!")
+
+    st.markdown("---")
+    st.warning("💡 **Висновок для інвестора:** Впровадження цієї системи дозволяє повернути від 15% до 40% 'злитих' угод вже в перший місяць за рахунок виправлення помилок менеджерів.")
+
+# ==========================================
+# ПАНЕЛЬ 2: MANAGER COACHING
+# ==========================================
+with tab_coach:
+    st.success("🎯 **Для РОПа:** ШІ не просто ставить бали, а підказує, які саме фрази менеджера завадили продажу. Дивіться блок 'Поради' праворуч.")
+    st.markdown("### 📊 Детальний розбір навичок")
+    
+    skill_cols = ['Привітання', 'Експертиза', 'Презентація', 'Крос_сел', 'Екосистема', 'Закриття', 'Привітність', 'Активне_Слухання', 'Впевненість_Мовлення', 'Емпатія']
+    existing_skills = [c for c in skill_cols if c in df_filtered.columns]
+    
+    agg_dict = {"Дзвінків": pd.NamedAgg(column="Дзвінок", aggfunc="count")}
+    if "Hard_Бал" in df_filtered.columns: agg_dict["Середній_Hard"] = pd.NamedAgg(column="Hard_Бал", aggfunc="mean")
+    if "Soft_Бал" in df_filtered.columns: agg_dict["Середній_Soft"] = pd.NamedAgg(column="Soft_Бал", aggfunc="mean")
+    
+    for skill in existing_skills:
+        agg_dict[skill] = pd.NamedAgg(column=skill, aggfunc="mean")
+        
+    coach_stats = df_filtered.groupby("Менеджер").agg(**agg_dict).reset_index()
+    
+    col_c1, col_c2 = st.columns([2, 1.2])
+    
+    with col_c1:
+        gradient_cols_main = [c for c in ['Середній_Hard', 'Середній_Soft'] if c in coach_stats.columns]
+        gradient_cols_skills = [c for c in existing_skills if c in coach_stats.columns]
+        
+        styled_coach = coach_stats.style.format(precision=1) \
+            .background_gradient(cmap='Greens', subset=gradient_cols_main) \
+            .background_gradient(cmap='Blues', subset=gradient_cols_skills, vmin=0, vmax=2)
+            
+        st.dataframe(styled_coach, use_container_width=True, hide_index=True)
+        
+    with col_c2:
+        st.markdown("**Рекомендації ШІ для вибраних менеджерів:**")
+        if "Порада_для_менеджера" in df_filtered.columns:
+            for mgr in selected_managers:
+                mgr_skills_df = df_filtered[df_filtered["Менеджер"] == mgr]
+                if not mgr_skills_df.empty:
+                    with st.expander(f"Поради для: {mgr}", expanded=False):
+                        for _, row in mgr_skills_df.iterrows():
+                            st.write(f"**Файл:** {row['Дзвінок']} (Готовність: {row.get('Готовність', 'N/A')})")
+                            st.info(row['Порада_для_менеджера'])
+                            st.write("---")
+        else:
+            st.write("Поради не знайдені.")
+                    
+    st.markdown("<br>### Матриця компетенцій (Raw Data)", unsafe_allow_html=True)
+    raw_cols = ['Менеджер', 'Дзвінок'] + existing_skills
+    styled_raw = df_filtered[raw_cols].style.format(precision=0) \
+        .background_gradient(cmap='Blues', subset=existing_skills, vmin=0, vmax=2)
+    st.dataframe(styled_raw, use_container_width=True, hide_index=True)
+
+# ==========================================
+# ПАНЕЛЬ 3: КАРТКА КОНКРЕТНОГО ДЗВІНКА
+# ==========================================
+with tab_call:
+    st.markdown("### 🔎 Детальний розбір розмови")
+
+    if 'Дзвінок' in df_filtered.columns and not df_filtered.empty:
+        selected_file = st.selectbox("Оберіть файл дзвінка для розбору:", df_filtered['Дзвінок'].unique())
+
+        if selected_file:
+            row = df_filtered[df_filtered['Дзвінок'] == selected_file].iloc[0]
+
+            score_12 = int(row.get('Hard_Бал', 0))
+            score_color = "#16A34A" if score_12 >= 10 else ("#F59E0B" if score_12 >= 6 else "#DC2626")
+            score_text = "Відмінно" if score_12 >= 10 else ("Задовільно" if score_12 >= 6 else "Погано")
+
+            hard_skill_keys = ['Привітання', 'Експертиза', 'Презентація', 'Крос_сел', 'Екосистема', 'Закриття']
+            likes, norms, dislikes = 0, 0, 0
+            for key in hard_skill_keys:
+                val = row.get(key, 0)
+                if val == 2: likes += 1
+                elif val == 1: norms += 1
+                else: dislikes += 1
+
+            deg = (score_12 / 12) * 360
+
+            st.markdown(f"""
+<div style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 40px; flex-wrap: wrap;">
+<div style="text-align: center; min-width: 130px;">
+<div style="width: 120px; height: 120px; border-radius: 50%; background: conic-gradient({score_color} {deg}deg, #E2E8F0 0deg); display: flex; justify-content: center; align-items: center; margin: 0 auto 12px auto;">
+<div style="width: 95px; height: 95px; border-radius: 50%; background: white; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+<span style="font-size: 32px; font-weight: 800; color: #0F172A; line-height: 1;">{score_12}</span>
+<span style="font-size: 13px; color: #64748B; font-weight: 600;">з 12</span>
+</div>
+</div>
+<span style="background: {score_color}15; color: {score_color}; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700;">{score_text}</span>
+</div>
+<div style="flex: 1;">
+<h3 style="margin: 0 0 15px 0; color: #0F172A; font-size: 18px;">📊 Аналіз навичок продажу</h3>
+<div style="display: flex; gap: 15px; flex-wrap: wrap;">
+<div style="flex: 1; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 10px; padding: 15px; text-align: center; min-width: 120px;">
+<div style="font-size: 24px; margin-bottom: 5px;">👍</div>
+<div style="font-size: 20px; font-weight: 800; color: #166534;">{likes}</div>
+<div style="font-size: 13px; color: #15803D; font-weight: 600;">Сильні сторони</div>
+</div>
+<div style="flex: 1; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 15px; text-align: center; min-width: 120px;">
+<div style="font-size: 24px; margin-bottom: 5px;">😐</div>
+<div style="font-size: 20px; font-weight: 800; color: #B45309;">{norms}</div>
+<div style="font-size: 13px; color: #B45309; font-weight: 600;">Зона уваги</div>
+</div>
+<div style="flex: 1; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 10px; padding: 15px; text-align: center; min-width: 120px;">
+<div style="font-size: 24px; margin-bottom: 5px;">🚩</div>
+<div style="font-size: 20px; font-weight: 800; color: #991B1B;">{dislikes}</div>
+<div style="font-size: 13px; color: #B91C1C; font-weight: 600;">Зони росту</div>
+</div>
+</div>
+</div>
+</div>
+""", unsafe_allow_html=True)
+
+            is_success = row.get("ROOT_PROBLEM", "Немає") == "Немає"
+            result_bg = "#F0FDF4" if is_success else "#FEF2F2"
+            result_border = "#BBF7D0" if is_success else "#FECACA"
+            result_title = "Угода успішна / Дотиснуто" if is_success else "Угоду втрачено"
+            result_desc = "Менеджер довів клієнта до цільової дії." if is_success else f"Причина втрати ліда: <b>{row.get('ROOT_PROBLEM', 'Невідомо')}</b>."
+
+            st.markdown(f"""
+<div style="background: {result_bg}; border: 1px solid {result_border}; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+<div style="display: flex; gap: 15px; align-items: center;">
+<div style="font-size: 24px;">{'✅' if is_success else '❌'}</div>
+<div>
+<h4 style="margin: 0 0 4px 0; color: #111827; font-size: 16px;">Результат розмови: {result_title}</h4>
+<p style="margin: 0; color: #374151; font-size: 14px;">{result_desc} <br> Готовність: <b>{row.get('Готовність', 'N/A')}</b> | Зафіксовано крок: <b>{row.get('Зафіксував_Наступний_Крок', 'Ні')}</b> | Крос-сел: <b>{row.get('Спроба_Крос_Селу', 'Ні')}</b></p>
+</div>
+</div>
+</div>
+""", unsafe_allow_html=True)
+
+            tone_text = row.get("Тон_Розмови", "Тон розмови не проаналізовано.")
+            st.markdown(f"""
+<div style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+<div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+<div style="font-size: 20px;">🎙️</div>
+<h4 style="margin: 0; color: #0F172A; font-size: 16px;">Тон розмови</h4>
+</div>
+<p style="margin: 0; color: #475569; font-size: 14px; line-height: 1.5; padding-left: 30px;">{tone_text}</p>
+</div>
+""", unsafe_allow_html=True)
+
+            st.markdown(f"""
+<div style="display: flex; gap: 20px; margin-bottom: 20px;">
+<div style="flex: 1; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; background: #F8FAFC;">
+<p style="margin: 0 0 4px 0; color: #64748B; font-size: 12px; text-transform: uppercase;">Менеджер</p>
+<h4 style="margin:
