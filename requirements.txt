@@ -1,0 +1,8 @@
+streamlit
+pandas
+plotly
+openpyxl
+Jinja2
+matplotlib
+gspread
+st-gsheets-connection
